@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "salah-tui"
+version = "0.1.0"
+description = "A terminal user interface (TUI) for Islamic prayer times in Dracula theme."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "postsonde" },
+]
+dependencies = [
+    "httpx>=0.27.0",
+    "textual>=0.80.0",
+]
+
+[project.scripts]
+salah = "salah_tui:main"
+
+[tool.setuptools]
+py-modules = ["salah_tui"]
