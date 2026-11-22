@@ -1,4 +1,3 @@
-````markdown
 # 🕌 Salah
 
 A sleek terminal user interface (TUI) for Islamic prayer times built with [Textual](https://textualize.io) and styled in the **Dracula** theme.
@@ -70,6 +69,3 @@ The Qibla is the direction from your location to the Kaaba in Makkah. Salah show
 ## 📄 License
 
 GNU General Public License (GPLv3)
-````
-
-Die wichtigsten Warnungen stehen im Abschnitt „Notes and Limitations“. Falls du die Qibla genauer angeben willst, etwa mit der tatsächlichen Position per GPS, lässt sich das später ergänzen.
