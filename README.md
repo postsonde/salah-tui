@@ -17,9 +17,7 @@ A sleek terminal user interface (TUI) for Islamic prayer times built with [Textu
 Install globally in an isolated environment using [pipx](https://pypa.io):
 
 ```bash
-git clone <your-repo-url>
-cd <your-repo-folder>
-pipx install .
+pipx install git+https://github.com/postsonde/salah-tui.git
 ```
 
 ## 🚀 Usage
