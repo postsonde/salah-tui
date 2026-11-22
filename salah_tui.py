@@ -1,4 +1,6 @@
+import math
 from datetime import datetime, timedelta
+
 import httpx
 from textual.app import App, ComposeResult
 from textual.containers import Vertical, Horizontal
@@ -6,6 +8,10 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Digits, Footer, Header, Input, Label, Select, Static
 
 BASE_URL = "https://api.aladhan.com/v1"
+GEO_URL = "https://geocoding-api.open-meteo.com/v1/search"
+
+KAABA_LAT = 21.4225
+KAABA_LON = 39.8262
 
 METHODS: dict[int, str] = {
     3: "Muslim World League (3)",
@@ -17,6 +23,67 @@ METHODS: dict[int, str] = {
     12: "Union Organization Islamic de France (12)",
     15: "Moonsighting Committee Worldwide (15)",
 }
+
+COMPASS_NAMES = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"]
+ROSE_ARROWS = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"]
+
+
+def geocode(city: str, country: str) -> tuple[float, float] | None:
+    """Koordinaten einer Stadt über Open-Meteo holen. Bevorzugt das passende Land."""
+    response = httpx.get(
+        GEO_URL,
+        params={"name": city, "count": 10, "language": "en", "format": "json"},
+        timeout=10.0,
+    )
+    response.raise_for_status()
+    results = response.json().get("results") or []
+    if not results:
+        return None
+
+    country_l = country.lower()
+    for res in results:
+        if res.get("country", "").lower() == country_l or res.get("country_code", "").lower() == country_l:
+            return res["latitude"], res["longitude"]
+    return results[0]["latitude"], results[0]["longitude"]
+
+
+def qibla_direction(lat: float, lon: float) -> float:
+    """Azimut zur Kaaba in Grad (0 = Nord, im Uhrzeigersinn)."""
+    phi1 = math.radians(lat)
+    phi2 = math.radians(KAABA_LAT)
+    dlon = math.radians(KAABA_LON - lon)
+    x = math.sin(dlon)
+    y = math.cos(phi1) * math.tan(phi2) - math.sin(phi1) * math.cos(dlon)
+    return math.degrees(math.atan2(x, y)) % 360
+
+
+def compass_name(deg: float) -> str:
+    return COMPASS_NAMES[round(deg / 45) % 8]
+
+
+def qibla_rose(deg: float) -> str:
+    """Große Kompassrose mit Pfeil in Qibla-Richtung und gelber Gradangabe."""
+    arrow = ROSE_ARROWS[round(deg / 45) % 8]
+    return (
+        "[b #ff5555]N[/]\n"
+        "[#8be9fd]NW[/]       [#8be9fd]NO[/]\n"
+        f"[#8be9fd]W[/]       [b #50fa7b]{arrow}[/]       [#8be9fd]O[/]\n"
+        "[#8be9fd]SW[/]       [#8be9fd]SO[/]\n"
+        "[#8be9fd]S[/]\n"
+        "\n"
+        f"[b #f1fa8c]🕋 {deg:.1f}° {compass_name(deg)}[/]"
+    )
+
+
+def qibla_line(deg: float) -> str:
+    """Einzeilige Qibla-Anzeige: Richtung, Pfeil und Gradzahl."""
+    arrow = ROSE_ARROWS[round(deg / 45) % 8]
+    name = compass_name(deg)
+    colored_name = "".join(
+        f"[b #ff5555]{c}[/]" if c == "N" else f"[#8be9fd]{c}[/]"
+        for c in name
+    )
+    return f"{colored_name}  [b #50fa7b]{arrow}[/]  [b #f1fa8c]🕋 {deg:.1f}°[/]"
 
 
 class CityModal(ModalScreen[tuple[str, str, int] | None]):
@@ -88,6 +155,8 @@ class CityModal(ModalScreen[tuple[str, str, int] | None]):
 class Salah(App):
     """TUI for Islamic prayer times in Dracula theme."""
 
+    TITLE = "☪ ✦ S A L A H ✦ ☪"
+
     CSS = """
     Screen {
         align: center middle;
@@ -109,6 +178,11 @@ class Salah(App):
     #method-info {
         text-align: center;
         color: #bd93f9;
+        margin-bottom: 1;
+    }
+
+    #qibla-rose {
+        text-align: center;
         margin-bottom: 1;
     }
 
@@ -143,12 +217,15 @@ class Salah(App):
         self.method_name: str = ""
         self.prayer_times: dict[str, datetime] = {}
         self.hijri_date: str = ""
+        self.qibla: float | None = None
+        self.coords_cache: dict[tuple[str, str], tuple[float, float]] = {}
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         with Vertical(id="main-box"):
             yield Static("Loading prayer times...", id="location-info")
             yield Static("", id="method-info")
+            yield Static("", id="qibla-rose")
             yield Static("", id="next-prayer-label")
             yield Digits("00:00:00", id="countdown")
             yield DataTable(id="times-table", cursor_type="row")
@@ -171,6 +248,24 @@ class Salah(App):
                 self.fetch_prayer_times()
 
         self.push_screen(CityModal(self.city, self.country, self.method), handle_city_result)
+
+    def get_coords(self) -> tuple[float, float] | None:
+        """Koordinaten der aktuellen Stadt, mit Cache pro Stadt und Land."""
+        key = (self.city.lower(), self.country.lower())
+        if key not in self.coords_cache:
+            coords = geocode(self.city, self.country)
+            if coords is None:
+                return None
+            self.coords_cache[key] = coords
+        return self.coords_cache[key]
+
+    def update_qibla_for_city(self) -> None:
+        try:
+            coords = self.get_coords()
+            self.qibla = qibla_direction(*coords) if coords else None
+        except Exception:
+            self.qibla = None
+        self.update_qibla()
 
     def fetch_prayer_times(self) -> None:
         today_str = datetime.now().strftime("%d-%m-%Y")
@@ -214,10 +309,17 @@ class Salah(App):
             self.query_one("#method-info", Static).update(
                 f"📐 Method: {self.method_name} (#{self.method})"
             )
+            self.update_qibla_for_city()
             self.update_countdown()
 
         except Exception as e:
             self.query_one("#location-info", Static).update(f"[b #ff5555]Error loading times:[/] {e}")
+
+    def update_qibla(self) -> None:
+        if self.qibla is None:
+            self.query_one("#qibla-rose", Static).update("")
+            return
+        self.query_one("#qibla-rose", Static).update(qibla_line(self.qibla))
 
     def update_countdown(self) -> None:
         if not self.prayer_times:
