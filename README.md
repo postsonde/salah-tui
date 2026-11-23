@@ -69,3 +69,17 @@ The Qibla is the direction from your location to the Kaaba in Makkah. Salah show
 ## 📄 License
 
 GNU General Public License (GPLv3)
+
+---
+
+## ☪ Islamic Terminal Suite (Dracula Theme)
+
+Part of a collection of minimalist Islamic terminal apps styled in the Dracula dark theme:
+
+| App | Command | Description |
+| :--- | :--- | :--- |
+| **[salah-tui](https://github.com/postsonde/salah-tui.git)** | `salah` | Islamic prayer times with live countdown, Hijri date & calculation methods |
+| **[hijri-tui](https://github.com/postsonde/hijri-tui.git)** | `hijri` | Native Hijri calendar with lunar phases, Sunnah fasting & holy days |
+| **[quran-tui](https://github.com/postsonde/quran-tui.git)** | `quran` | Study the Holy Quran with 100+ translations, side-by-side view & bookmarks |
+| **[asma-tui](https://github.com/postsonde/asma-tui.git)** | `asma` | Learn the 99 Names of Allah with flashcards, streak quiz & directory |
+
