@@ -158,6 +158,11 @@ class Salah(App):
     TITLE = "☪ ✦ S A L A H ✦ ☪"
 
     CSS = """
+    Header {
+        color: #f1fa8c;
+        text-style: bold;
+    }
+
     Screen {
         align: center middle;
     }
