@@ -13,7 +13,7 @@ from pathlib import Path
 
 import httpx
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Center, Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Digits, Footer, Header, Input, Label, Select, Static
 
@@ -41,9 +41,9 @@ PRAYER_KEYS = ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"]
 
 ALARM_MODES = ["off", "at_time", "before_23m"]
 ALARM_LABELS = {
-    "off": "[#6272a4]🔕 Alarm: Off[/]",
-    "at_time": "[#50fa7b]🔔 Alarm: At Prayer Time[/]",
-    "before_23m": "[#f1fa8c]⏰ Alarm: 23m Before + At Time[/]",
+    "off": "[#6272a4]🌑 Alarm: Off[/]",
+    "at_time": "[#50fa7b]✦ Alarm: At Prayer Time[/]",
+    "before_23m": "[#ffd700]✧ Alarm: 23m Before + At Time[/]",
 }
 
 
@@ -192,12 +192,22 @@ def qibla_line(deg: float) -> str:
     return f"{colored_name}  [b #50fa7b]{arrow}[/]  [b #f1fa8c]🕋 {deg:.1f}°[/]"
 
 
+PRAYER_COLORS: dict[str, str] = {
+    "Fajr": "#bd93f9",
+    "Sunrise": "#f1fa8c",
+    "Dhuhr": "#ffe866",
+    "Asr": "#ffb86c",
+    "Maghrib": "#ff79c6",
+    "Isha": "#9580ff",
+}
+
+
 def sun_arc(
     prayer_times: dict[str, datetime],
     now: datetime,
     selected_prayer: str | None = None,
 ) -> str:
-    """Rendert den 24h-Sonnenverlauf als Unicode-Braille-Kurve im Dracula-Theme."""
+    """Rendert den 24h-Sonnenverlauf mit klarer X-Achse und vertikaler Live-Linie."""
     if not prayer_times:
         return ""
 
@@ -233,6 +243,7 @@ def sun_arc(
     sun_col = max(0, min(W - 1, round((cur / 1440.0) * (W - 1))))
     sun_row = max(0, min(H - 1, round(y_at(cur)) // 4))
     is_day = sr <= cur <= mg
+    sun_color = "#f1fa8c" if is_day else "#bd93f9"
 
     markers = {
         max(0, min(W - 1, round((to_min(prayer_times[k]) / 1440.0) * (W - 1)))): k
@@ -243,15 +254,24 @@ def sun_arc(
     for r in range(H):
         row_chars: list[str] = []
         for c in range(W):
+            is_sun_ray = (
+                c == sun_col
+                and min(HORIZON, sun_row) < r < max(HORIZON, sun_row)
+            )
             if r == sun_row and c == sun_col:
                 row_chars.append("[b #f1fa8c]☀[/]" if is_day else "[b #bd93f9]☾[/]")
             elif r == HORIZON and c in markers:
                 p_name = markers[c]
-                if p_name == selected_prayer:
-                    row_chars.append("[b #ff79c6]◈[/]")
-                else:
-                    color = "#f1fa8c" if p_name in ("Sunrise", "Maghrib") else "#50fa7b"
-                    row_chars.append(f"[b {color}]◆[/]")
+                p_color = PRAYER_COLORS.get(p_name, "#50fa7b")
+                glyph = "◈" if p_name == selected_prayer else "◆"
+                row_chars.append(f"[b {p_color}]{glyph}[/]")
+            elif r == HORIZON and c == sun_col and sun_row != HORIZON:
+                # Sauberer Schnittpunkt der Live-Linie auf der X-Achse
+                cross = "┴" if sun_row < HORIZON else "┬"
+                row_chars.append(f"[{sun_color}]{cross}[/]")
+            elif is_sun_ray:
+                # Klare dünne vertikale Linie von Sonne/Mond bis zur X-Achse
+                row_chars.append(f"[{sun_color}]│[/]")
             elif grid[r][c]:
                 ch = chr(0x2800 + grid[r][c])
                 color = "#f1fa8c" if r < HORIZON else "#6272a4"
@@ -262,11 +282,56 @@ def sun_arc(
                 row_chars.append(" ")
         lines.append("".join(row_chars))
 
-    sr_s = prayer_times["Sunrise"].strftime("%H:%M")
-    dh_s = prayer_times["Dhuhr"].strftime("%H:%M")
-    mg_s = prayer_times["Maghrib"].strftime("%H:%M")
-    footer = f"[#6272a4]00:00[/]     [#f1fa8c]🌅 {sr_s}[/]     [#50fa7b]☀ {dh_s}[/]     [#ff79c6]🌇 {mg_s}[/]     [#6272a4]23:59[/]"
-    lines.append(footer)
+    # Fußzeile exakt auf W=56 Spalten ausrichten, sodass jede Zeit mittig unter ihrem Marker steht
+    footer_chars = [" "] * W
+    footer_styles: dict[int, str] = {}
+
+    def place_label(center_col: int, text: str, color: str) -> None:
+        start = max(0, min(W - len(text), center_col - len(text) // 2))
+        for idx, ch in enumerate(text):
+            footer_chars[start + idx] = ch
+            footer_styles[start + idx] = color
+
+    def col_of(key: str) -> int:
+        return max(0, min(W - 1, round((to_min(prayer_times[key]) / 1440.0) * (W - 1))))
+
+    place_label(0, "00:00", "#6272a4")
+    place_label(col_of("Sunrise"), prayer_times["Sunrise"].strftime("%H:%M"), "#f1fa8c")
+    dh_col = col_of("Dhuhr")
+    place_label(dh_col, prayer_times["Dhuhr"].strftime("%H:%M"), "#ffe866")
+    place_label(col_of("Maghrib"), prayer_times["Maghrib"].strftime("%H:%M"), "#ff79c6")
+    place_label(W - 1, "23:59", "#6272a4")
+
+    styled_footer = "".join(
+        f"[{footer_styles[i]}]{ch}[/]" if i in footer_styles else ch
+        for i, ch in enumerate(footer_chars)
+    )
+
+    # Sonne direkt über der Dhuhr-Uhrzeit platzieren
+    sun_line = [" "] * W
+    sun_line[dh_col] = "[#ffe866]☀[/]"
+    lines.append("".join(sun_line))
+    lines.append(styled_footer)
+
+    # Zweite Fußzeile: nur Fajr & Isha exakt unter ihren Punkten
+    sub_chars = [" "] * W
+    sub_styles: dict[int, str] = {}
+
+    def place_sub(center_col: int, text: str, color: str) -> None:
+        start = max(0, min(W - len(text), center_col - len(text) // 2))
+        for idx, ch in enumerate(text):
+            sub_chars[start + idx] = ch
+            sub_styles[start + idx] = color
+
+    place_sub(col_of("Fajr"), prayer_times["Fajr"].strftime("%H:%M"), "#bd93f9")
+    place_sub(col_of("Isha"), prayer_times["Isha"].strftime("%H:%M"), "#bd93f9")
+
+    styled_sub = "".join(
+        f"[{sub_styles[i]}]{ch}[/]" if i in sub_styles else ch
+        for i, ch in enumerate(sub_chars)
+    )
+    lines.append(styled_sub)
+
     return "\n".join(lines)
 
 
@@ -356,6 +421,7 @@ class Salah(App):
         height: auto;
         border: heavy #bd93f9;
         padding: 1 2;
+        align: center middle;
     }
 
     #location-info {
@@ -372,6 +438,7 @@ class Salah(App):
 
     #qibla-rose {
         text-align: center;
+        margin-bottom: 1;
     }
 
     #alarm-info {
@@ -391,6 +458,7 @@ class Salah(App):
     }
 
     DataTable {
+        width: auto;
         height: auto;
         margin-top: 1;
         background: transparent;
@@ -466,7 +534,8 @@ class Salah(App):
             yield Static(ALARM_LABELS[self.alarm_mode], id="alarm-info")
             yield Static("", id="next-prayer-label")
             yield Digits("00:00:00", id="countdown")
-            yield DataTable(id="times-table", cursor_type="row")
+            with Center():
+                yield DataTable(id="times-table", cursor_type="row")
             yield Static("", id="sun-arc")
         yield Footer()
 
@@ -694,27 +763,19 @@ class Salah(App):
             24,
         )
 
-        icons = {
-            "Fajr": ("#8be9fd", "↗"),
-            "Sunrise": ("#f1fa8c", "☀"),
-            "Dhuhr": ("#ffd700", "◐"),
-            "Asr": ("#ffb86c", "↘"),
-            "Maghrib": ("#ff79c6", "↘"),
-            "Isha": ("#bd93f9", "☾"),
-        }
-
-        name_colors = {
-            "Fajr": "#bd93f9",
-            "Sunrise": "#f1fa8c",
-            "Dhuhr": "#ffd700",
-            "Asr": "#ffd700",
-            "Maghrib": "#ff79c6",
-            "Isha": "#bd93f9",
+        # Eigenständige Licht-Farben pro Gebetszeile (Dhuhr hell, Asr dunkler/wärmer)
+        row_styles = {
+            "Fajr": ("#bd93f9", "↗"),     # Morgendunkelheit (Violett)
+            "Sunrise": ("#f1fa8c", "☀"),  # Sonnenaufgang (Helles Gelb)
+            "Dhuhr": ("#ffe866", "◐"),    # Mittag / Zenit (Strahlendes Hellgold)
+            "Asr": ("#ffb86c", "↘"),      # Nachmittag (Warmes Orange/Bernstein)
+            "Maghrib": ("#ff79c6", "↘"),  # Abenddämmerung (Abendrot/Pink)
+            "Isha": ("#9580ff", "☾"),     # Tiefe Nacht (Dunkles Violett)
         }
 
         for name, p_time in pt.items():
+            color, arrow = row_styles.get(name, ("#f8f8f2", "•"))
             time_str = p_time.strftime("%H:%M")
-            styled_name = f"[{name_colors.get(name, '#f8f8f2')}]{name}[/]"
 
             if p_time < now:
                 status = "[#ffd700]✓ Passed[/]"
@@ -724,13 +785,17 @@ class Salah(App):
                 status = "[#50fa7b]• Upcoming[/]"
 
             mins = durations[name]
-            color, arrow = icons[name]
-            span_str = f"[{color}]{arrow} {fmt_span(mins)}[/]"
             num = round((mins / 1440) * common_den)
-            ratio_str = f"[#8be9fd]{num}/{common_den}[/]"
-            share_str = f"[#6272a4]{(mins / 1440) * 100:4.1f}%[/]"
+            pct = (mins / 1440) * 100
 
-            table.add_row(styled_name, time_str, status, span_str, ratio_str, share_str)
+            table.add_row(
+                f"[{color}]{name}[/]",
+                f"[{color}]{time_str}[/]",
+                status,
+                f"[{color}]{arrow} {fmt_span(mins)}[/]",
+                f"[{color}]{num}/{common_den}[/]",
+                f"[{color}]{pct:4.1f}%[/]",
+            )
 
         target_name = "Fajr" if next_prayer.startswith("Fajr") else next_prayer
         if self._last_next_prayer != target_name:
