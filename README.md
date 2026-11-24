@@ -1,17 +1,21 @@
 # 🕌 Salah
 
-A sleek terminal user interface (TUI) for Islamic prayer times built with [Textual](https://textualize.io) and styled in the **Dracula** theme.
+A sleek terminal user interface (TUI) for Islamic prayer times mapping the sun path across the horizon built with [Textual](https://textualize.io) and styled in the **Dracula** theme.
 
 ![Salah TUI Screenshot](screenshot.png)
 
 ## ✨ Features
 
-- **Live Countdown** to the next upcoming prayer
-- **Color-Coded Status** (`Gold` for passed prayers, `Green` for next & upcoming prayers)
-- **Qibla Direction** shown as a compass rose with the bearing in degrees
-- **Hijri & Gregorian Date** display
-- **Interactive Settings Modal** to switch city, country, and calculation method on the fly
-- **Calculation Method Indicator** showing the active method fetched from the [AlAdhan API](https://aladhan.com)
+- **24-Hour Solar Arc & Symmetries:** Unicode Braille curve mapping the sun/moon path across the horizon with interactive prayer markers, interval spans, ratios, and percentage shares.
+- **Synthesized Reminders:** Configurable audio/desktop notifications supporting on-time chimes and 23-minute advance alerts (`n`).
+- **Live Countdown & Status:** Real-time countdown with color-coded prayer status indicators (`✓ Passed`, `⏳ Next`, `• Upcoming`).
+- **Qibla Direction:** Single-line compass bearing, directional arrow, and exact angle to the Kaaba.
+- **Hijri Date & Method Indicator:** Displays active Hijri dates and calculation methods via the [AlAdhan API](https://aladhan.com).
+- **Settings & Persistence:** Interactive modal to switch locations/methods (`c`) and save preferences locally to `~/.salah_tui.json` (`s`).
+
+## ☀️ Solar Arc & Daylight Symmetries
+
+Salah renders a live 24-hour astronomical arc below the prayer table using Unicode Braille sub-pixels, featuring daylight curves from Sunrise to Maghrib, night arcs spanning Isha and Fajr, and interactive markers (`◆` for fixed prayers, `◈` for the selected row). It also includes symmetry columns (`Span`, `Ratio`, `Share`) comparing twilight intervals and daylight proportions.
 
 ## 📦 Installation
 
@@ -33,27 +37,30 @@ salah
 
 | Key | Action |
 | :--- | :--- |
+| `↑` / `↓` | Scroll through prayers and highlight their position on the solar arc |
 | `c` | Change city, country, and calculation method |
+| `n` | Cycle reminder mode (`Off` → `At Prayer Time` → `23m Before + At Time`) |
+| `s` | Save location, calculation method, and reminder mode to `~/.salah_tui.json` |
 | `r` | Refresh prayer times |
 | `q` | Quit the application |
 
 ## 🕋 Qibla Direction
 
-The Qibla is the direction from your location to the Kaaba in Makkah. Salah shows it as a compass rose between the calculation method and the next prayer. The arrow points in the Qibla direction, and the line below shows the compass point and the exact bearing in degrees.
+The Qibla is the direction from your location to the Kaaba in Makkah, displayed between the calculation method and reminder status with a directional arrow and bearing in degrees.
 
 ### How It Is Calculated
 
-- **Coordinates:** The city and country are geocoded with the [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api). Results are cached per city for the current session.
-- **Bearing:** The initial great-circle bearing from your coordinates to the Kaaba (21.4225° N, 39.8262° E) is computed with spherical trigonometry. The result is measured in degrees clockwise from true north (0° = N, 90° = E, 180° = S, 270° = W).
-- **Independence:** The Qibla is calculated locally and does not depend on the selected calculation method for prayer times.
+- **Coordinates:** Geocoded via [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api) and cached per session.
+- **Bearing:** Initial great-circle bearing to the Kaaba (21.4225° N, 39.8262° E) computed locally via spherical trigonometry.
+- **Independence:** Calculated independently of the chosen prayer time calculation method.
 
 ### ⚠️ Notes and Limitations
 
-- **City-level accuracy:** The bearing is computed from the city centre, not your exact position. For distant cities, the difference to your actual location is usually small, but it can be a degree or more in some cases.
-- **True north, not magnetic north:** The bearing refers to geographic north. A magnetic compass shows a different value, depending on your location and the current magnetic declination. Use a compass app or a map with a correction if you need the magnetic bearing.
-- **Ambiguous city names:** The geocoder prefers the country you entered, but common city names can still match the wrong place. Check the displayed location and the Qibla value if something looks wrong. You can verify the result with the [AlAdhan Qibla endpoint](https://aladhan.com/qibla-api) by passing the coordinates.
-- **Internet required:** Prayer times and the first Qibla lookup for a city need an internet connection. Cached cities are available for the rest of the session.
-- **Not verified in the field:** The calculation has been checked against reference values, but it has not been tested on site. For prayer, rely on local mosques and authorities where possible.
+- **City-level accuracy:** Computed from city centers; minor deviations may occur for larger or distant areas.
+- **True north:** Based on geographic (true) north rather than magnetic north.
+- **Ambiguous names:** Double-check matched locations if common city names overlap; verify coordinates via [AlAdhan Qibla endpoint](https://aladhan.com/qibla-api).
+- **Internet required:** Initial lookups require connectivity; subsequent lookups rely on session caching.
+- **Field verification:** Theoretical calculations should be cross-referenced with local authorities for formal prayer times.
 
 ## ⚙️ Supported Calculation Methods
 
@@ -74,11 +81,7 @@ GNU General Public License (GPLv3)
 
 ## ☪ Islamic Terminal Suite (Dracula Theme)
 
-A minimalist suite of Islamic terminal applications built with Python & [Textual](https://textualize.io), styled in the [Dracula](https://draculatheme.com) dark theme.
-
-<p align="center">
-  <img src="islamic-tui-suite.gif" alt="Islamic Terminal Suite Demo" width="85%" />
-</p>
+Part of a collection of minimalist Islamic terminal apps styled in the Dracula dark theme:
 
 | App | Command | Description |
 | :--- | :--- | :--- |
@@ -86,3 +89,4 @@ A minimalist suite of Islamic terminal applications built with Python & [Textual
 | **[hijri-tui](https://github.com/postsonde/hijri-tui.git)** | `hijri` | Native Hijri calendar with lunar phases, Sunnah fasting & holy days |
 | **[quran-tui](https://github.com/postsonde/quran-tui.git)** | `quran` | Study the Holy Quran with 100+ translations, side-by-side view & bookmarks |
 | **[asma-tui](https://github.com/postsonde/asma-tui.git)** | `asma` | Learn the 99 Names of Allah with flashcards, streak quiz & directory |
+
