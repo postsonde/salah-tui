@@ -18,7 +18,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Digits, Footer, Header, Input, Label, Select, Static
 
 BASE_URL = "https://api.aladhan.com/v1"
-GEO_URL = "https://open-meteo.com"
+GEO_URL = "https://geocoding-api.open-meteo.com/v1/search"
 CONFIG_PATH = Path.home() / ".salah_tui.json"
 
 KAABA_LAT = 21.4225
