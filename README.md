@@ -83,6 +83,10 @@ GNU General Public License (GPLv3)
 
 Part of a collection of minimalist Islamic terminal apps styled in the Dracula dark theme:
 
+<p align="center">
+  <img src="islamic-tui-suite.gif" alt="Islamic Terminal Suite Demo" width="85%" />
+</p>
+
 | App | Command | Description |
 | :--- | :--- | :--- |
 | **[salah-tui](https://github.com/postsonde/salah-tui.git)** | `salah` | Islamic prayer times with live countdown, Hijri date & calculation methods |
