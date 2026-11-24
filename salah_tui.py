@@ -250,6 +250,13 @@ def sun_arc(
         for k in PRAYER_KEYS
     }
 
+    def col_of(key: str) -> int:
+        return max(0, min(W - 1, round((to_min(prayer_times[key]) / 1440.0) * (W - 1))))
+
+    dh_col = col_of("Dhuhr")
+    dh_str = prayer_times["Dhuhr"].strftime("%H:%M")
+    dh_start = max(0, min(W - len(dh_str), dh_col - len(dh_str) // 2))
+
     lines: list[str] = []
     for r in range(H):
         row_chars: list[str] = []
@@ -266,12 +273,13 @@ def sun_arc(
                 glyph = "◈" if p_name == selected_prayer else "◆"
                 row_chars.append(f"[b {p_color}]{glyph}[/]")
             elif r == HORIZON and c == sun_col and sun_row != HORIZON:
-                # Sauberer Schnittpunkt der Live-Linie auf der X-Achse
                 cross = "┴" if sun_row < HORIZON else "┬"
                 row_chars.append(f"[{sun_color}]{cross}[/]")
             elif is_sun_ray:
-                # Klare dünne vertikale Linie von Sonne/Mond bis zur X-Achse
                 row_chars.append(f"[{sun_color}]│[/]")
+            elif r == 4 and dh_start <= c < dh_start + len(dh_str) and not grid[r][c]:
+                # Dhuhr direkt in die unterste Zeile der Kurve setzen (mittig unter seinem Punkt)
+                row_chars.append(f"[#ffe866]{dh_str[c - dh_start]}[/]")
             elif grid[r][c]:
                 ch = chr(0x2800 + grid[r][c])
                 color = "#f1fa8c" if r < HORIZON else "#6272a4"
@@ -282,55 +290,37 @@ def sun_arc(
                 row_chars.append(" ")
         lines.append("".join(row_chars))
 
-    # Fußzeile exakt auf W=56 Spalten ausrichten, sodass jede Zeit mittig unter ihrem Marker steht
-    footer_chars = [" "] * W
-    footer_styles: dict[int, str] = {}
+    def render_label_row(items: list[tuple[int, str, str]], extra_sun_col: int | None = None) -> str:
+        chars = [" "] * W
+        styles: dict[int, str] = {}
+        if extra_sun_col is not None:
+            chars[extra_sun_col] = "☀"
+            styles[extra_sun_col] = "#ffe866"
+        for center_col, text, color in items:
+            start = max(0, min(W - len(text), center_col - len(text) // 2))
+            for idx, ch in enumerate(text):
+                chars[start + idx] = ch
+                styles[start + idx] = color
+        return "".join(f"[{styles[i]}]{ch}[/]" if i in styles else ch for i, ch in enumerate(chars))
 
-    def place_label(center_col: int, text: str, color: str) -> None:
-        start = max(0, min(W - len(text), center_col - len(text) // 2))
-        for idx, ch in enumerate(text):
-            footer_chars[start + idx] = ch
-            footer_styles[start + idx] = color
+    # Zeile 1 unter der Kurve: Asr (direkt unter Dhuhr)
+    lines.append(render_label_row([
+        (col_of("Asr"), prayer_times["Asr"].strftime("%H:%M"), "#ffb86c"),
+    ]))
 
-    def col_of(key: str) -> int:
-        return max(0, min(W - 1, round((to_min(prayer_times[key]) / 1440.0) * (W - 1))))
+    # Zeile 2 unter der Kurve: 00:00, Sunrise, Sonne unter Dhuhr, Maghrib, 23:59
+    lines.append(render_label_row([
+        (0, "00:00", "#6272a4"),
+        (col_of("Sunrise"), prayer_times["Sunrise"].strftime("%H:%M"), "#f1fa8c"),
+        (col_of("Maghrib"), prayer_times["Maghrib"].strftime("%H:%M"), "#ff79c6"),
+        (W - 1, "23:59", "#6272a4"),
+    ], extra_sun_col=dh_col))
 
-    place_label(0, "00:00", "#6272a4")
-    place_label(col_of("Sunrise"), prayer_times["Sunrise"].strftime("%H:%M"), "#f1fa8c")
-    dh_col = col_of("Dhuhr")
-    place_label(dh_col, prayer_times["Dhuhr"].strftime("%H:%M"), "#ffe866")
-    place_label(col_of("Maghrib"), prayer_times["Maghrib"].strftime("%H:%M"), "#ff79c6")
-    place_label(W - 1, "23:59", "#6272a4")
-
-    styled_footer = "".join(
-        f"[{footer_styles[i]}]{ch}[/]" if i in footer_styles else ch
-        for i, ch in enumerate(footer_chars)
-    )
-
-    # Sonne direkt über der Dhuhr-Uhrzeit platzieren
-    sun_line = [" "] * W
-    sun_line[dh_col] = "[#ffe866]☀[/]"
-    lines.append("".join(sun_line))
-    lines.append(styled_footer)
-
-    # Zweite Fußzeile: nur Fajr & Isha exakt unter ihren Punkten
-    sub_chars = [" "] * W
-    sub_styles: dict[int, str] = {}
-
-    def place_sub(center_col: int, text: str, color: str) -> None:
-        start = max(0, min(W - len(text), center_col - len(text) // 2))
-        for idx, ch in enumerate(text):
-            sub_chars[start + idx] = ch
-            sub_styles[start + idx] = color
-
-    place_sub(col_of("Fajr"), prayer_times["Fajr"].strftime("%H:%M"), "#bd93f9")
-    place_sub(col_of("Isha"), prayer_times["Isha"].strftime("%H:%M"), "#bd93f9")
-
-    styled_sub = "".join(
-        f"[{sub_styles[i]}]{ch}[/]" if i in sub_styles else ch
-        for i, ch in enumerate(sub_chars)
-    )
-    lines.append(styled_sub)
+    # Zeile 3 unter der Kurve: Fajr & Isha
+    lines.append(render_label_row([
+        (col_of("Fajr"), prayer_times["Fajr"].strftime("%H:%M"), "#bd93f9"),
+        (col_of("Isha"), prayer_times["Isha"].strftime("%H:%M"), "#bd93f9"),
+    ]))
 
     return "\n".join(lines)
 
