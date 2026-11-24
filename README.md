@@ -89,7 +89,7 @@ Part of a collection of minimalist Islamic terminal apps styled in the Dracula d
 
 | App | Command | Description |
 | :--- | :--- | :--- |
-| **[salah-tui](https://github.com/postsonde/salah-tui.git)** | `salah` | Islamic prayer times with live countdown, Hijri date & calculation methods |
+| **[salah-tui](https://github.com/postsonde/salah-tui.git)** | `salah` | Islamic prayer times mapping the sun path on the horizon, Hijri date & calculation methods |
 | **[hijri-tui](https://github.com/postsonde/hijri-tui.git)** | `hijri` | Native Hijri calendar with lunar phases, Sunnah fasting & holy days |
 | **[quran-tui](https://github.com/postsonde/quran-tui.git)** | `quran` | Study the Holy Quran with 100+ translations, side-by-side view & bookmarks |
 | **[asma-tui](https://github.com/postsonde/asma-tui.git)** | `asma` | Learn the 99 Names of Allah with flashcards, streak quiz & directory |
