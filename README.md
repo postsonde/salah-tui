@@ -22,7 +22,7 @@ Salah renders a live 24-hour astronomical arc below the prayer table using Unico
 Install globally in an isolated environment using [pipx](https://pypa.io):
 
 ```bash
-pipx install git+https://github.com/postsonde/salah-tui.git
+pipx install salah-tui
 ```
 
 ## 🚀 Usage
@@ -75,7 +75,7 @@ The Qibla is the direction from your location to the Kaaba in Makkah, displayed 
 
 ## 📄 License
 
-GNU General Public License (GPLv3)
+**GNU General Public License v3.0** (GNU GPLv3) **🄯 All Lights returned** [postsonde](https://github.com/postsonde)
 
 ---
 
